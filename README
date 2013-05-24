@@ -8,7 +8,7 @@ It supports most of the popular shells and dynamic language interpreters
 out of the box. However, if an interpreter is not directly supported, you can
 use the -C or --custom option in order to provide your own (see below).
 
-Usage: mksc [-aAbBcdDklmpPrtxyz] [-C INTERPRETER] FILENAME
+Usage: mksc [-aAbBcdDeklmpPrtyz] [-C INTERPRETER] FILENAME
 
 Options:
   -a, --ash          Create an Almquist Shell script
@@ -31,7 +31,6 @@ Options:
   -P, --php          Create a PHP script
   -r, --ruby         Create a Ruby script
   -t, --tcsh         Create a TENEX C Shell script
-  -x, --busybox      Create a BusyBox script
   -y, --python       Create a Python script
   -z, --zsh          Create a Z Shell script
   -?, -h, --help     Display this text and exit
