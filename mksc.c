@@ -167,7 +167,7 @@ mksc_help (void)
       "                     interpreter. If INTERPRETER is not an absolute\n"
       "                     path, an attempt to find it in the system's\n"
       "                     PATH environment variable will be made.\n"
-      "  -d, --dash         Create a Debian Almquist Shell\n"
+      "  -d, --dash         Create a Debian Almquist Shell script\n"
       "  -D, --pdksh        Create a Public Domain Korn Shell script\n"
       "  -k, --ksh          Create a Korn Shell script\n"
       "  -l, --lua          Create a Lua script\n"
@@ -181,7 +181,6 @@ mksc_help (void)
       "  -z, --zsh          Create a Z Shell script\n"
       "  -?, -h, --help     Display this text and exit\n"
       "  -v, --version      Display version information and exit\n"
-      /*"\n"*/
       "If no script type option is given, `--sh' is assumed.\n",
     stdout);
   exit (EXIT_SUCCESS);

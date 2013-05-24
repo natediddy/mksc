@@ -21,7 +21,7 @@ Options:
                      interpreter. If INTERPRETER is not an absolute
                      path, an attempt to find it in the system's
                      PATH environment variable will be made.
-  -d, --dash         Create a Debian Almquist Shell
+  -d, --dash         Create a Debian Almquist Shell script
   -D, --pdksh        Create a Public Domain Korn Shell script
   -k, --ksh          Create a Korn Shell script
   -l, --lua          Create a Lua script
