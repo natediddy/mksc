@@ -40,7 +40,7 @@
 #include <unistd.h>
 
 #define MKSC_DEFAULT_PROGRAM_NAME "mksc"
-#define MKSC_VERSION "0.4"
+#define MKSC_VERSION "0.9"
 
 #define MKSC_DATE_STRING_BUFFER_SIZE 12
 #define MKSC_INTRP_BUFFER_SIZE 64
@@ -48,7 +48,6 @@
 #define MKSC_ASH_NAME "ash"
 #define MKSC_AWK_NAME "awk"
 #define MKSC_BASH_NAME "bash"
-#define MKSC_BUSYBOX_NAME "busybox"
 #define MKSC_CSH_NAME "csh"
 #define MKSC_DASH_NAME "dash"
 #define MKSC_KSH_NAME "ksh"
@@ -63,21 +62,26 @@
 #define MKSC_TCSH_NAME "tcsh"
 #define MKSC_ZSH_NAME "zsh"
 
-typedef enum mksc_script_intrp mksc_script_intrp_t;
+#define MKSC_AWK_EXT "awk"
+#define MKSC_LUA_EXT "lua"
+#define MKSC_PHP_EXT "php"
+#define MKSC_PERL_EXT "pl"
+#define MKSC_PYTHON_EXT "py"
+#define MKSC_RUBY_EXT "rb"
+#define MKSC_SHELL_EXT "sh"
+
+#define MKSC_FALSE ((mksc_boolean_t) 0)
+#define MKSC_TRUE ((mksc_boolean_t) 1)
+
+typedef unsigned char mksc_boolean_t;
+typedef enum mksc_intrp mksc_intrp_t;
 typedef struct mksc_script mksc_script_t;
 
-typedef enum
-{
-  MKSC_FALSE,
-  MKSC_TRUE
-} mksc_boolean_t;
-
-enum mksc_script_intrp
+enum mksc_intrp
 {
   MKSC_ASH_TYPE,
   MKSC_AWK_TYPE,
   MKSC_BASH_TYPE,
-  MKSC_BUSYBOX_TYPE,
   MKSC_CSH_TYPE,
   MKSC_CUSTOM_TYPE,
   MKSC_DASH_TYPE,
@@ -97,7 +101,7 @@ enum mksc_script_intrp
 
 struct mksc_script
 {
-  mksc_script_intrp_t type;
+  mksc_intrp_t type;
   char *intrp_path;
   char *path;
   mksc_script_t *next;
@@ -105,9 +109,10 @@ struct mksc_script
 };
 
 extern char **environ;
-const char *g_program_name;
 
+const char *g_program_name;
 mksc_script_t *g_list = NULL;
+mksc_boolean_t g_use_file_ext = MKSC_FALSE;
 
 static mksc_boolean_t
 mksc_string_equals (const char *s1, const char *s2)
@@ -148,7 +153,7 @@ static void
 mksc_usage (mksc_boolean_t error)
 {
   fprintf (!error ? stdout : stderr,
-      "Usage: %s [-aAbBcdDklmpPrtxyz] [-C INTERPRETER] FILENAME\n",
+      "Usage: %s [-aAbBcdDeklmpPrtyz] [-C INTERPRETER] FILENAME\n",
       g_program_name);
 }
 
@@ -169,6 +174,7 @@ mksc_help (void)
       "                     PATH environment variable will be made.\n"
       "  -d, --dash         Create a Debian Almquist Shell script\n"
       "  -D, --pdksh        Create a Public Domain Korn Shell script\n"
+      "  -e, --extension    Add proper file extension to FILENAME\n"
       "  -k, --ksh          Create a Korn Shell script\n"
       "  -l, --lua          Create a Lua script\n"
       "  -m, --mksh         Create a MirBSD Korn Shell script\n"
@@ -176,7 +182,6 @@ mksc_help (void)
       "  -P, --php          Create a PHP script\n"
       "  -r, --ruby         Create a Ruby script\n"
       "  -t, --tcsh         Create a TENEX C Shell script\n"
-      "  -x, --busybox      Create a BusyBox script\n"
       "  -y, --python       Create a Python script\n"
       "  -z, --zsh          Create a Z Shell script\n"
       "  -?, -h, --help     Display this text and exit\n"
@@ -293,7 +298,7 @@ mksc_find_intrp_abspath (char *intrp)
   n_intrp = strlen (intrp);
   if (n_intrp > 0)
   {
-    if (intrp[0] == '/')
+    if (*intrp == '/')
     {
       if (mksc_file_exists (intrp))
       {
@@ -352,11 +357,73 @@ mksc_find_intrp_abspath (char *intrp)
   return NULL;
 }
 
+static const char *
+mksc_ext_from_intrp_type (mksc_intrp_t *i)
+{
+  switch (*i)
+  {
+    case MKSC_ASH_TYPE:
+    case MKSC_BASH_TYPE:
+    case MKSC_CSH_TYPE:
+    case MKSC_DASH_TYPE:
+    case MKSC_KSH_TYPE:
+    case MKSC_MKSH_TYPE:
+    case MKSC_PDKSH_TYPE:
+    case MKSC_SH_TYPE:
+    case MKSC_TCSH_TYPE:
+    case MKSC_ZSH_TYPE:
+      return MKSC_SHELL_EXT;
+    case MKSC_AWK_TYPE:
+      return MKSC_AWK_EXT;
+    case MKSC_LUA_TYPE:
+      return MKSC_LUA_EXT;
+    case MKSC_PERL_TYPE:
+      return MKSC_PERL_EXT;
+    case MKSC_PHP_TYPE:
+      return MKSC_PHP_EXT;
+    case MKSC_PYTHON_TYPE:
+      return MKSC_PYTHON_EXT;
+    case MKSC_RUBY_TYPE:
+      return MKSC_RUBY_EXT;
+    default:
+      return "";
+  }
+}
+
+static char *
+mksc_script_name (const char *name, mksc_intrp_t *i)
+{
+  size_t n_name;
+  size_t n_ext;
+  char *ext_name;
+  const char *ext;
+
+  n_name = strlen (name);
+  if (!g_use_file_ext)
+    return strndup (name, n_name);
+
+  ext = mksc_ext_from_intrp_type (i);
+  n_ext = strlen (ext);
+
+  ext_name = (char *) malloc (n_name + n_ext + 2);
+  if (ext_name == NULL)
+    mksc_die ("out of memory");
+
+  strncpy (ext_name, name, n_name);
+  ext_name[n_name] = '.';
+  strncpy (ext_name + (n_name + 1), ext, n_ext);
+  ext_name[n_name + n_ext + 1] = '\0';
+  return ext_name;
+}
+
 static void
 mksc_write_template (const char *sc_path, const char *intrp_path)
 {
   FILE *sc;
+  char *s;
   char *d_str;
+  char *f_str;
+  const char *u_str;
 
   sc = fopen (sc_path, "w");
   if (sc == NULL)
@@ -365,6 +432,15 @@ mksc_write_template (const char *sc_path, const char *intrp_path)
         g_program_name, sc_path, strerror (errno));
     return;
   }
+
+  d_str = mksc_date_string ();
+  u_str = mksc_getenv ("USER");
+
+  s = mksc_basename ((char *) sc_path);
+  if (s != NULL && *s != '\0')
+    f_str = strndup (s, strlen (s));
+  else
+    f_str = strndup (sc_path, strlen (sc_path));
 
   /*
      #!<interpreter path>
@@ -375,34 +451,46 @@ mksc_write_template (const char *sc_path, const char *intrp_path)
      # <date>
      #
    */
-  d_str = mksc_date_string ();
-  if (d_str != NULL)
-  {
-    fprintf (sc,
-        "#!%s\n"
-        "#\n"
-        "# %s\n"
-        "#\n"
-        "# %s\n"
-        "# %s\n"
-        "#\n",
-        intrp_path,
-        mksc_basename ((char *) sc_path),
-        mksc_getenv ("USER"),
-        d_str);
-    free (d_str);
-    d_str = NULL;
-  }
+  if (d_str != NULL && u_str != NULL)
+    fprintf (sc, "#!%s\n#\n# %s\n#\n# %s\n# %s\n#\n",
+        intrp_path, (f_str != NULL) ? f_str : sc_path, u_str, d_str);
+
+  /*
+     #!<interpreter path>
+     #
+     # <filename>
+     # <username>
+     #
+   */
+  else if (d_str == NULL && u_str != NULL)
+    fprintf (sc, "#!%s\n#\n# %s\n# %s\n#\n",
+        intrp_path, (f_str != NULL) ? f_str : sc_path, u_str);
+
+  /*
+     #!<interpreter path>
+     #
+     # <filename>
+     # <date>
+     #
+   */
+  else if (d_str != NULL && u_str == NULL)
+    fprintf (sc, "#!%s\n#\n# %s\n# %s\n#\n",
+        intrp_path, (f_str != NULL) ? f_str : sc_path, d_str);
+
+  /*
+     #!<interpreter path>
+     #
+     # <filename>
+     #
+   */
   else
-    fprintf (sc,
-        "#!%s\n"
-        "#\n"
-        "# %s\n"
-        "# %s\n"
-        "#\n",
-        intrp_path,
-        mksc_basename ((char *) sc_path),
-        mksc_getenv ("USER"));
+    fprintf (sc, "#!%s\n#\n# %s\n#\n",
+        intrp_path, (f_str != NULL) ? f_str : sc_path);
+
+  if (d_str != NULL)
+    free (d_str);
+  if (f_str != NULL)
+    free (f_str);
 
   if (fclose (sc) != 0)
     fprintf (stderr, "%s: warning: failed to close `%s' (%s)\n",
@@ -429,6 +517,11 @@ mksc_exit (void)
         free (g_list->intrp_path);
         g_list->intrp_path = NULL;
       }
+      if (g_list->path != NULL)
+      {
+        free (g_list->path);
+        g_list->path = NULL;
+      }
       if (g_list->prev != NULL)
       {
         free (g_list->prev);
@@ -446,7 +539,7 @@ mksc_exit (void)
 }
 
 static const char *
-mksc_def_intrp_name (mksc_script_intrp_t *i)
+mksc_def_intrp_name (mksc_intrp_t *i)
 {
   switch (*i)
   {
@@ -456,8 +549,6 @@ mksc_def_intrp_name (mksc_script_intrp_t *i)
       return MKSC_AWK_NAME;
     case MKSC_BASH_TYPE:
       return MKSC_BASH_NAME;
-    case MKSC_BUSYBOX_TYPE:
-      return MKSC_BUSYBOX_NAME;
     case MKSC_CSH_TYPE:
       return MKSC_CSH_NAME;
     /*case MKSC_CUSTOM_TYPE:
@@ -493,24 +584,22 @@ mksc_def_intrp_name (mksc_script_intrp_t *i)
 
 static void
 mksc_discern_long_opt (const char *o,
-                       mksc_script_intrp_t *i,
+                       mksc_intrp_t *i,
                        char *intrp_buffer)
 {
   size_t n;
   char *x;
   const char *d_intrp;
 
-  if (mksc_string_equals (o, "almquist-shell"))
+  if (mksc_string_equals (o, "ash"))
     *i = MKSC_ASH_TYPE;
   else if (mksc_string_equals (o, "awk"))
     *i = MKSC_AWK_TYPE;
-  else if (mksc_string_equals (o, "bourne-shell"))
+  else if (mksc_string_equals (o, "sh"))
     *i = MKSC_SH_TYPE;
-  else if (mksc_string_equals (o, "bourne-again-shell"))
+  else if (mksc_string_equals (o, "bash"))
     *i = MKSC_BASH_TYPE;
-  else if (mksc_string_equals (o, "busybox"))
-    *i = MKSC_BUSYBOX_TYPE;
-  else if (mksc_string_equals (o, "c-shell"))
+  else if (mksc_string_equals (o, "csh"))
     *i = MKSC_CSH_TYPE;
   else if (mksc_string_equals (o, "custom"))
     *i = MKSC_CUSTOM_TYPE;
@@ -522,31 +611,33 @@ mksc_discern_long_opt (const char *o,
     strncpy (intrp_buffer, x, n);
     intrp_buffer[n] = '\0';
   }
-  else if (mksc_string_equals (o, "debian-almquist-shell"))
+  else if (mksc_string_equals (o, "dash"))
     *i = MKSC_DASH_TYPE;
+  else if (mksc_string_equals (o, "extension"))
+    g_use_file_ext = MKSC_TRUE;
   else if (mksc_string_equals (o, "help"))
     mksc_help ();
-  else if (mksc_string_equals (o, "korn-shell"))
+  else if (mksc_string_equals (o, "ksh"))
     *i = MKSC_KSH_TYPE;
   else if (mksc_string_equals (o, "lua"))
     *i = MKSC_LUA_TYPE;
-  else if (mksc_string_equals (o, "mirbsd-korn-shell"))
+  else if (mksc_string_equals (o, "mksh"))
     *i = MKSC_MKSH_TYPE;
   else if (mksc_string_equals (o, "perl"))
     *i = MKSC_PERL_TYPE;
   else if (mksc_string_equals (o, "php"))
     *i = MKSC_PHP_TYPE;
-  else if (mksc_string_equals (o, "public-domain-korn-shell"))
+  else if (mksc_string_equals (o, "pdksh"))
     *i = MKSC_PDKSH_TYPE;
   else if (mksc_string_equals (o, "python"))
     *i = MKSC_PYTHON_TYPE;
   else if (mksc_string_equals (o, "ruby"))
     *i = MKSC_RUBY_TYPE;
-  else if (mksc_string_equals (o, "tenex-c-shell"))
+  else if (mksc_string_equals (o, "tcsh"))
     *i = MKSC_TCSH_TYPE;
   else if (mksc_string_equals (o, "version"))
     mksc_version ();
-  else if (mksc_string_equals (o, "z-shell"))
+  else if (mksc_string_equals (o, "zsh"))
     *i = MKSC_ZSH_TYPE;
   else
   {
@@ -566,7 +657,7 @@ mksc_discern_long_opt (const char *o,
 
 static void
 mksc_discern_short_opt (const char o,
-                        mksc_script_intrp_t *i,
+                        mksc_intrp_t *i,
                         char *intrp_buffer)
 {
   size_t n;
@@ -600,6 +691,9 @@ mksc_discern_short_opt (const char o,
     case 'D':
       *i = MKSC_PDKSH_TYPE;
       break;
+    case 'e':
+      g_use_file_ext = MKSC_TRUE;
+      break;
     case 'h':
       mksc_help ();
     case 'k':
@@ -625,9 +719,6 @@ mksc_discern_short_opt (const char o,
       break;
     case 'v':
       mksc_version ();
-    case 'x':
-      *i = MKSC_BUSYBOX_TYPE;
-      break;
     case 'y':
       *i = MKSC_PYTHON_TYPE;
       break;
@@ -656,12 +747,12 @@ mksc_parse_cmd (char **v)
   size_t n;
   char intrp[MKSC_INTRP_BUFFER_SIZE];
   char *intrp_abspath;
-  mksc_script_intrp_t i;
+  mksc_intrp_t i;
   mksc_script_t *l;
 
-  mksc_set_proper_program_name (v[0]);
+  mksc_set_proper_program_name (*v);
   i = MKSC_SH_TYPE;
-  intrp[0] = '\0';
+  *intrp = '\0';
 
   for (x = 1; v[x] != NULL; ++x)
   {
@@ -677,7 +768,7 @@ mksc_parse_cmd (char **v)
         mksc_usage (MKSC_TRUE);
         exit (EXIT_FAILURE);
       }
-      if (i == MKSC_CUSTOM_TYPE && intrp[0] == '\0')
+      if (i == MKSC_CUSTOM_TYPE && *intrp == '\0')
       {
         if (v[x + 1] == NULL)
         {
@@ -693,6 +784,12 @@ mksc_parse_cmd (char **v)
     }
     else
     {
+      if (i == MKSC_SH_TYPE && *intrp == '\0')
+      {
+        n = strlen (MKSC_SH_NAME);
+        strncpy (intrp, MKSC_SH_NAME, n);
+        intrp[n] = '\0';
+      }
       intrp_abspath = mksc_find_intrp_abspath (intrp);
       if (intrp_abspath == NULL)
       {
@@ -718,8 +815,8 @@ mksc_parse_cmd (char **v)
       }
       l->type = i;
       l->intrp_path = intrp_abspath;
-      intrp[0] = '\0';
-      l->path = v[x];
+      *intrp = '\0';
+      l->path = mksc_script_name (v[x], &i);
       l->next = NULL;
       if (l->prev != NULL)
         for (; l != NULL; l = l->prev)

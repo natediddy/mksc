@@ -23,6 +23,7 @@ Options:
                      PATH environment variable will be made.
   -d, --dash         Create a Debian Almquist Shell script
   -D, --pdksh        Create a Public Domain Korn Shell script
+  -e, --extension    Add proper file extension to FILENAME
   -k, --ksh          Create a Korn Shell script
   -l, --lua          Create a Lua script
   -m, --mksh         Create a MirBSD Korn Shell script
