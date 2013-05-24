@@ -1,0 +1,50 @@
+MKSC (MaKe SCript)
+------------------
+
+MKSC is a simple C program that creates a basic script template to be
+further edited by the user.
+
+It supports most of the popular shells and dynamic language interpreters
+out of the box. However, if an interpreter is not directly supported, you can
+use the -C or --custom option in order to provide your own (see below).
+
+Usage: mksc [-aAbBcdDklmpPrtxyz] [-C INTERPRETER] FILENAME
+
+Options:
+  -a, --almquist-shell            Create an Almquist Shell script (`ash')
+  -A, --awk                       Create an AWK script (`awk')
+  -b, --bourne-shell              Create a Bourne Shell script (`sh') [DEFAULT]
+  -B, --bourne-again-shell        Create a Bourne-Again Shell script (`bash')
+  -c, --c-shell                   Create a C Shell script (`csh')
+  -C INTERPRETER, --custom=INTERPRETER
+                                  Create a script that uses INTERPRETER
+                                  as the interpreter. If INTERPRETER
+                                  is not an absolute path, an
+                                  attempt to find it in
+                                  the system's PATH environment
+                                  variable will be made.
+  -d, --debian-almquist-shell     Create a Debian Almquist Shell script (`dash')
+  -D, --public-domain-korn-shell  Create a Public Domain Korn Shell
+                                  script (`pdksh')
+  -k, --korn-shell                Create a Korn Shell script (`ksh')
+  -l, --lua                       Create a Lua script (`lua')
+  -m, --mirbsd-korn-shell         Create a MirBSD Korn Shell script (`mksh')
+  -p, --perl                      Create a Perl script (`perl')
+  -P, --php                       Create a PHP script (`php')
+  -r, --ruby                      Create a Ruby script (`ruby')
+  -t, --tenex-c-shell             Create a TENEX C Shell script (`tcsh')
+  -x, --busybox                   Create a Busybox script (`busybox')
+  -y, --python                    Create a Python script (`python')
+  -z, --z-shell                   Create a Z Shell script (`zsh')
+  -?, -h, --help                  Display this text and exit
+  -v, --version                   Display version information and exit
+
+If no script type option is given, `-b' is assumed.
+
+For example, if you would like to use another version of Python besides your
+system's default Python interpreter, you could use something like:
+
+    mksc --custom=python3 mypython3script
+
+MKSC will find the absolute path of the `python3' executable without the user
+needing to know where exactly it is.
